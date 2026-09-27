@@ -1,31 +1,21 @@
 /**
  * A Ray of Hope - Donation & Receipt Automation System
- * 
- * Main entry point for Google Apps Script Web App
- * Phase 2: Database operations fully functional
- * 
- * This file handles:
- * - Web app deployment routes
- * - Request routing (donor form / admin dashboard)
- * - HTML serving
- * - API endpoints for database operations
+ * Clean consolidated Code.gs
+ * Phase 1 + Phase 2 + Phase 3
  */
 
-/**
- * Main entry point for web app requests
- * Routes requests to appropriate handler
- */
+// ============================================================
+// WEB APP ENTRY POINT (ONLY ONE doGet AND ONE doPost)
+// ============================================================
+
 function doGet(e) {
   try {
-    const page = e.parameter.page || 'donor-form';
-    const action = e.parameter.action || null;
-    
-    // Route to appropriate handler
+    const params = e?.parameter || {};
+    const page = params.page || 'donor-form';
+
     switch (page) {
       case 'admin':
         return handleAdminPage(e);
-      case 'admin-dashboard':
-        return handleAdminDashboard(e);
       case 'donor-form':
       default:
         return handleDonorFormPage(e);
@@ -34,413 +24,107 @@ function doGet(e) {
     Logger.log(`Error in doGet: ${error}`);
     return HtmlService.createHtmlOutput(`
       <h1>Error</h1>
-      <p>An error occurred. Please try again later.</p>
       <p>${error.toString()}</p>
     `);
   }
 }
 
-/**
- * Handle POST requests (form submissions, API calls)
- */
 function doPost(e) {
   try {
-    // Parse request data
+    Logger.log('POST event received');
+
+    if (!e) {
+      Logger.log('ERROR: No event object');
+      return createResponse(false, 'No request event received');
+    }
+
+    Logger.log('Parameters: ' + JSON.stringify(e.parameter || {}));
+
+    if (e.postData) {
+      Logger.log('PostData type: ' + e.postData.type);
+      Logger.log('PostData contents: ' + e.postData.contents);
+    }
+
     let data = {};
     let action = '';
-    
-    try {
-      if (e.postData && e.postData.contents) {
+
+    // 1. JSON request
+    if (e.postData &&
+        e.postData.contents &&
+        e.postData.type &&
+        e.postData.type.includes('application/json')) {
+
+      data = JSON.parse(e.postData.contents);
+      action = data.action || '';
+    }
+
+    // 2. Form-urlencoded / multipart request
+    else if (e.parameter) {
+      data = Object.assign({}, e.parameter);
+      action = data.action || '';
+    }
+
+    // 3. Fallback: try parsing postData regardless of content type
+    else if (e.postData && e.postData.contents) {
+      try {
         data = JSON.parse(e.postData.contents);
-        action = data.action || e.parameter.action;
-      } else {
-        data = e.parameter;
-        action = data.action;
+        action = data.action || '';
+      } catch (parseError) {
+        Logger.log('Could not parse postData as JSON');
       }
-    } catch (parseError) {
-      // Fallback to parameter parsing
-      data = e.parameter;
-      action = data.action;
     }
-    
-    // Route actions
+
+    Logger.log('Final action: ' + action);
+    Logger.log('Final data: ' + JSON.stringify(data));
+
     switch (action) {
-      // Donation operations
-      case 'create_donation':
-        return handleCreateDonation(data);
-      case 'get_donation':
-        return handleGetDonation(data);
-      case 'get_all_donations':
-        return handleGetAllDonations(data);
-      case 'search_donations':
-        return handleSearchDonations(data);
-      case 'get_pending_donations':
-        return handleGetPendingDonations();
-      case 'confirm_donation':
-        return handleConfirmDonation(data);
-      
-      // Payment operations
-      case 'get_payment':
-        return handleGetPayment(data);
-      case 'confirm_payment':
-        return handleConfirmPayment(data);
-      case 'get_pending_payments':
-        return handleGetPendingPayments();
-      
-      // Donor operations
-      case 'get_donor':
-        return handleGetDonor(data);
-      case 'search_donors':
-        return handleSearchDonors(data);
-      
-      // Form field operations
-      case 'get_form_fields':
-        return handleGetFormFields();
-      case 'get_form_field_validation':
-        return handleGetFormFieldValidation();
-      case 'validate_donor_data':
-        return handleValidateDonorData(data);
-      
-      // Configuration operations
-      case 'get_config':
-        return handleGetConfig(data);
-      case 'set_config':
-        return handleSetConfig(data);
-      
-      // Statistics
-      case 'get_donation_stats':
-        return handleGetDonationStats();
-      case 'get_payment_stats':
-        return handleGetPaymentStats();
-      
-      // Audit log
-      case 'get_audit_log':
-        return handleGetAuditLog(data);
-      
+
+      case 'getFormFields':
+        return getFormFieldsAPI();
+
+      case 'validateDonorData':
+        return validateDonorDataAPI(data);
+
+      case 'createDonation':
+        return createDonationAPI(data);
+
+      case 'markPaymentPending':
+        return markPaymentPendingAPI(data);
+
+      case 'getConfig':
+        return getConfigAPI(data);
+
+      case 'setConfig':
+        return setConfigAPI(data);
+
       default:
-        return createResponse(false, `Unknown action: ${action}`);
+        return createResponse(
+          false,
+          `Unknown action: ${action}`
+        );
     }
+
   } catch (error) {
     Logger.log(`Error in doPost: ${error}`);
     return createResponse(false, error.toString());
   }
 }
-
-// ============================================================
-// DONATION HANDLERS
-// ============================================================
-
-function handleCreateDonation(data) {
-  try {
-    // Create/get donor first
-    const donor = createOrGetDonor({
-      name: data.donor_name || '',
-      mobile: data.mobile || '',
-      email: data.email || '',
-      address: data.address || '',
-      city: data.city || '',
-      state: data.state || '',
-      pin: data.pin || '',
-      country: data.country || 'India',
-      pan: data.pan || '',
-      dob: data.dob || '',
-      occupation: data.occupation || '',
-      company: data.company || ''
-    });
-    
-    // Create donation
-    const donation = createDonation({
-      donor_id: donor.donor_id,
-      amount: parseFloat(data.amount),
-      payment_method: data.payment_method
-    });
-    
-    // Create payment record
-    const payment = createPayment({
-      donation_id: donation.donation_id,
-      amount: donation.amount,
-      payment_method: donation.payment_method
-    });
-    
-    // Mark donation as pending
-    markPaymentPending(donation.donation_id);
-    
-    return createResponse(true, 'Donation created', {
-      donation: donation,
-      donor: donor,
-      payment: payment
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleGetDonation(data) {
-  try {
-    if (!data.donation_id) {
-      return createResponse(false, 'donation_id required');
+function testDoPost() {
+  const mockEvent = {
+    parameter: {
+      action: 'getFormFields'
+    },
+    postData: {
+      type: 'application/json',
+      contents: JSON.stringify({
+        action: 'getFormFields'
+      })
     }
-    
-    const donation = getDonationById(data.donation_id);
-    const payment = getPaymentByDonationId(data.donation_id);
-    const donor = getDonorById(donation.donor_id);
-    
-    return createResponse(true, 'Donation retrieved', {
-      donation: donation,
-      payment: payment,
-      donor: donor
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
+  };
 
-function handleGetAllDonations(data) {
-  try {
-    const donations = getAllDonations();
-    return createResponse(true, 'Donations retrieved', {
-      donations: donations,
-      count: donations.length
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
+  const response = doPost(mockEvent);
 
-function handleSearchDonations(data) {
-  try {
-    if (!data.term) {
-      return createResponse(false, 'Search term required');
-    }
-    
-    const results = searchDonations(data.term);
-    return createResponse(true, 'Search complete', {
-      results: results,
-      count: results.length
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleGetPendingDonations() {
-  try {
-    const pending = getPendingDonations();
-    return createResponse(true, 'Pending donations retrieved', {
-      donations: pending,
-      count: pending.length
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleConfirmDonation(data) {
-  try {
-    if (!data.donation_id) {
-      return createResponse(false, 'donation_id required');
-    }
-    
-    confirmDonation(data.donation_id, data.admin_email || 'admin@org.com');
-    const updated = getDonationById(data.donation_id);
-    
-    return createResponse(true, 'Donation confirmed', {
-      donation: updated
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-// ============================================================
-// PAYMENT HANDLERS
-// ============================================================
-
-function handleGetPayment(data) {
-  try {
-    if (!data.payment_id) {
-      return createResponse(false, 'payment_id required');
-    }
-    
-    const payment = getPaymentById(data.payment_id);
-    return createResponse(true, 'Payment retrieved', {
-      payment: payment
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleConfirmPayment(data) {
-  try {
-    if (!data.payment_id) {
-      return createResponse(false, 'payment_id required');
-    }
-    
-    confirmPayment(data.payment_id, data.admin_email || 'admin@org.com', data.transaction_id || '');
-    const updated = getPaymentById(data.payment_id);
-    
-    return createResponse(true, 'Payment confirmed', {
-      payment: updated
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleGetPendingPayments() {
-  try {
-    const pending = getPendingPayments();
-    return createResponse(true, 'Pending payments retrieved', {
-      payments: pending,
-      count: pending.length
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-// ============================================================
-// DONOR HANDLERS
-// ============================================================
-
-function handleGetDonor(data) {
-  try {
-    if (!data.donor_id) {
-      return createResponse(false, 'donor_id required');
-    }
-    
-    const donor = getDonorById(data.donor_id);
-    return createResponse(true, 'Donor retrieved', {
-      donor: donor
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleSearchDonors(data) {
-  try {
-    if (!data.term) {
-      return createResponse(false, 'Search term required');
-    }
-    
-    const results = searchDonorsByName(data.term);
-    return createResponse(true, 'Search complete', {
-      results: results,
-      count: results.length
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-// ============================================================
-// FORM FIELD HANDLERS
-// ============================================================
-
-function handleGetFormFields() {
-  try {
-    const fields = getActiveFormFields();
-    return createResponse(true, 'Form fields retrieved', {
-      fields: fields
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleGetFormFieldValidation() {
-  try {
-    const rules = getFormFieldValidationRules();
-    return createResponse(true, 'Validation rules retrieved', {
-      rules: rules
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleValidateDonorData(data) {
-  try {
-    const result = validateDonorData(data);
-    return createResponse(result.valid, result.valid ? 'Valid' : 'Validation failed', {
-      errors: result.errors
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-// ============================================================
-// CONFIGURATION HANDLERS
-// ============================================================
-
-function handleGetConfig(data) {
-  try {
-    if (!data.key) {
-      return createResponse(false, 'key required');
-    }
-    
-    const value = getConfig(data.key);
-    return createResponse(true, 'Config retrieved', {
-      [data.key]: value
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleSetConfig(data) {
-  try {
-    if (!data.key || data.value === undefined) {
-      return createResponse(false, 'key and value required');
-    }
-    
-    setConfig(data.key, data.value, data.updated_by || 'admin@org.com');
-    return createResponse(true, 'Config updated');
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-// ============================================================
-// STATISTICS HANDLERS
-// ============================================================
-
-function handleGetDonationStats() {
-  try {
-    const stats = getDonationStats();
-    return createResponse(true, 'Stats retrieved', stats);
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-function handleGetPaymentStats() {
-  try {
-    const stats = getPaymentStats();
-    return createResponse(true, 'Stats retrieved', stats);
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
-}
-
-// ============================================================
-// AUDIT LOG HANDLERS
-// ============================================================
-
-function handleGetAuditLog(data) {
-  try {
-    const limit = parseInt(data.limit) || 100;
-    const logs = getAuditLog(limit);
-    return createResponse(true, 'Audit log retrieved', {
-      logs: logs,
-      count: logs.length
-    });
-  } catch (error) {
-    return createResponse(false, error.toString());
-  }
+  Logger.log(response.getContent());
 }
 
 // ============================================================
@@ -449,172 +133,12 @@ function handleGetAuditLog(data) {
 
 function handleDonorFormPage(e) {
   try {
-    const html = HtmlService.createTemplateFromFile('html/donor-form')
-      .evaluate()
-      .setXFrameOptions(HtmlService.XFrameOptions.ALLOWALL);
+    const html = HtmlService
+      .createTemplateFromFile('html/donor-form')
+      .evaluate();
+
     return html;
-  } catch (error) {
-    Logger.log(`Error loading donor form: ${error}`);
-    return HtmlService.createHtmlOutput(`
-      <h1>Error</h1>
-      <p>Failed to load form. Error: ${error}</p>
-    `);
-  }
-}
 
-function handleAdminPage(e) {
-  try {
-    const html = HtmlService.createTemplateFromFile('html/admin-dashboard')
-      .evaluate()
-      .setXFrameOptions(HtmlService.XFrameOptions.ALLOWALL);
-    return html;
-  } catch (error) {
-    Logger.log(`Error loading admin page: ${error}`);
-    return HtmlService.createHtmlOutput(`
-      <h1>Error</h1>
-      <p>Failed to load admin panel. Error: ${error}</p>
-    `);
-  }
-}
-
-function handleAdminDashboard(e) {
-  return handleAdminPage(e);
-}
-
-// ============================================================
-// UTILITY FUNCTIONS
-// ============================================================
-
-/**
- * Create a JSON response object
- */
-function createResponse(success, message, data = null) {
-  return ContentService
-    .createTextOutput(JSON.stringify({
-      success: success,
-      message: message,
-      data: data
-    }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-/**
- * System initialization (call once after deployment)
- */
-function initialize() {
-  try {
-    Logger.log('Initializing system...');
-    
-    // Ensure all sheets exist
-    ensureDonationsSheet();
-    ensureDonorsSheet();
-    ensurePaymentsSheet();
-    ensureFormFieldsSheet();
-    ensureConfigurationSheet();
-    ensureAuditLogSheet();
-    
-    // Initialize default configuration
-    initializeDefaultConfig();
-    
-    // Initialize default form fields
-    initializeDefaultFormFields();
-    
-    Logger.log('System initialization complete');
-    return createResponse(true, 'System initialized');
-  } catch (error) {
-    Logger.log(`Initialization error: ${error}`);
-    return createResponse(false, error.toString());
-  }
-}
-
-/**
- * Run database tests
- */
-function testAll() {
-  runAllDatabaseTests();
-}
-
-/**
- * Quick test function
- */
-function quickTest() {
-  Logger.log('Running quick test...');
-  
-  try {
-    // Initialize
-    initialize();
-    
-    // Create test donor
-    const donor = createOrGetDonor({
-      name: 'Quick Test Donor',
-      mobile: '9999888877'
-    });
-    Logger.log(`✓ Created donor: ${donor.donor_id}`);
-    
-    // Create test donation
-    const donation = createDonation({
-      donor_id: donor.donor_id,
-      amount: 1000,
-      payment_method: PAYMENT_METHOD.UPI
-    });
-    Logger.log(`✓ Created donation: ${donation.donation_id}`);
-    
-    // Get form fields
-    const fields = getActiveFormFields();
-    Logger.log(`✓ Retrieved ${fields.length} form fields`);
-    
-    // Get stats
-    const stats = getDonationStats();
-    Logger.log(`✓ Stats: ${JSON.stringify(stats)}`);
-    
-    Logger.log('✓ Quick test passed');
-  } catch (error) {
-    Logger.log(`✗ Quick test failed: ${error}`);
-  }
-}
-
-/**
- * A Ray of Hope - Donation & Receipt Automation System
- * Phase 3: Donor Web Interface
- * 
- * Updated handlers for form submission and payment processing
- */
-
-// ============================================================
-// WEB APP ENTRY POINT
-// ============================================================
-
-function doGet(e) {
-  try {
-    const page = e.parameter.page || 'donor-form';
-    
-    switch (page) {
-      case 'admin':
-        return handleAdminPage(e);
-      case 'donor-form':
-      default:
-        return handleDonorFormPage(e);
-    }
-  } catch (error) {
-    Logger.log(`Error in doGet: ${error}`);
-    return HtmlService.createHtmlOutput(`
-      <h1>Error</h1>
-      <p>An error occurred. Please try again later.</p>
-      <p>${error.toString()}</p>
-    `);
-  }
-}
-
-// ============================================================
-// PAGE HANDLERS
-// ============================================================
-
-function handleDonorFormPage(e) {
-  try {
-    const html = HtmlService.createTemplateFromFile('html/donor-form')
-      .evaluate()
-      .setXFrameOptions(HtmlService.XFrameOptions.ALLOWALL);
-    return html;
   } catch (error) {
     Logger.log(`Error loading donor form: ${error}`);
     return HtmlService.createHtmlOutput(`
@@ -626,10 +150,12 @@ function handleDonorFormPage(e) {
 
 function handleAdminPage(e) {
   try {
-    const html = HtmlService.createTemplateFromFile('html/admin-dashboard')
-      .evaluate()
-      .setXFrameOptions(HtmlService.XFrameOptions.ALLOWALL);
+    const html = HtmlService
+      .createTemplateFromFile('html/admin-dashboard')
+      .evaluate();
+
     return html;
+
   } catch (error) {
     Logger.log(`Error loading admin page: ${error}`);
     return HtmlService.createHtmlOutput(`
@@ -638,12 +164,11 @@ function handleAdminPage(e) {
     `);
   }
 }
-
 // ============================================================
-// API ENDPOINTS - FORM FIELDS
+// API HANDLERS (Call Phase 2 database functions)
 // ============================================================
 
-function getFormFields() {
+function getFormFieldsAPI() {
   try {
     const fields = getActiveFormFields();
     return createResponse(true, 'Form fields retrieved', {
@@ -654,40 +179,36 @@ function getFormFields() {
     return createResponse(false, error.toString());
   }
 }
-
-function getFormFieldValidation() {
+function validateDonorDataAPI(data) {
   try {
-    const rules = getFormFieldValidationRules();
-    return createResponse(true, 'Validation rules retrieved', {
-      rules: rules
-    });
-  } catch (error) {
-    Logger.log(`Error getting validation rules: ${error}`);
-    return createResponse(false, error.toString());
-  }
-}
+    if (!data) {
+      return createResponse(false, 'Request data is missing');
+    }
 
-function validateDonorData(data) {
-  try {
     const result = validateDonorData(data);
-    return createResponse(result.valid, result.valid ? 'Valid' : 'Validation failed', {
-      errors: result.errors
-    });
+
+    return createResponse(
+      result.valid,
+      result.valid ? 'Valid' : 'Validation failed',
+      {
+        errors: result.errors
+      }
+    );
+
   } catch (error) {
     Logger.log(`Error validating data: ${error}`);
     return createResponse(false, error.toString());
   }
 }
-
-// ============================================================
-// API ENDPOINTS - DONATION CREATION
-// ============================================================
-
-function createDonation(data) {
+function createDonationAPI(data) {
   try {
-    Logger.log('Creating donation with data: ' + JSON.stringify(data));
-    
-    // Create/get donor first
+    if (!data) {
+      return createResponse(false, 'Request data is missing');
+    }
+
+    Logger.log('Creating donation...');
+    Logger.log('Donation data: ' + JSON.stringify(data));
+
     const donor = createOrGetDonor({
       name: data.donor_name || '',
       mobile: data.mobile || '',
@@ -702,94 +223,99 @@ function createDonation(data) {
       occupation: data.occupation || '',
       company: data.company || ''
     });
-    
-    Logger.log('Donor created/retrieved: ' + donor.donor_id);
-    
-    // Create donation
+
+    Logger.log('Donor created: ' + donor.donor_id);
+
     const donation = createDonation({
       donor_id: donor.donor_id,
       amount: parseFloat(data.amount),
       payment_method: data.payment_method
     });
-    
+
     Logger.log('Donation created: ' + donation.donation_id);
-    
-    // Create payment record
+
     const payment = createPayment({
       donation_id: donation.donation_id,
       amount: donation.amount,
       payment_method: donation.payment_method
     });
-    
+
     Logger.log('Payment created: ' + payment.payment_id);
-    
+
     return createResponse(true, 'Donation created', {
       donation: donation,
       donor: donor,
       payment: payment
     });
+
   } catch (error) {
     Logger.log(`Error creating donation: ${error}`);
     return createResponse(false, error.toString());
   }
 }
-
-// ============================================================
-// API ENDPOINTS - PAYMENT CONFIRMATION
-// ============================================================
-
-function markPaymentPending(data) {
+function markPaymentPendingAPI(data) {
   try {
+    if (!data) {
+      return createResponse(false, 'Request data is missing');
+    }
+
     if (!data.donation_id) {
       return createResponse(false, 'donation_id required');
     }
-    
-    const donation = getDonationById(data.donation_id);
-    if (!donation) {
-      return createResponse(false, 'Donation not found');
-    }
-    
+
     markAwaitingConfirmation(data.donation_id);
-    
-    Logger.log('Donation marked as awaiting confirmation: ' + data.donation_id);
-    
+
+    Logger.log(
+      'Donation marked as awaiting confirmation: ' +
+      data.donation_id
+    );
+
     return createResponse(true, 'Payment marked as pending', {
       donation_id: data.donation_id
     });
+
   } catch (error) {
     Logger.log(`Error marking payment pending: ${error}`);
     return createResponse(false, error.toString());
   }
 }
-
-// ============================================================
-// API ENDPOINTS - CONFIGURATION
-// ============================================================
-
-function getConfig(data) {
+function getConfigAPI(data) {
   try {
+    data = data || {};
+
     if (!data.key) {
       return createResponse(false, 'key required');
     }
-    
+
     const value = getConfig(data.key);
+
     return createResponse(true, 'Config retrieved', {
       [data.key]: value
     });
+
   } catch (error) {
     Logger.log(`Error getting config: ${error}`);
     return createResponse(false, error.toString());
   }
 }
 
-function setConfig(data) {
+
+function setConfigAPI(data) {
   try {
+    data = data || {};
+
     if (!data.key || data.value === undefined) {
       return createResponse(false, 'key and value required');
     }
-    
-    setConfig(data.key, data.value, data.updated_by || 'admin@org.com');
+
+    setConfig(
+      data.key,
+      data.value,
+      data.updated_by || 'admin@org.com'
+    );
+
     return createResponse(true, 'Config updated');
+
   } catch (error) {
     Logger.log(`Error setting config: ${error}`);
     return createResponse(false, error.toString());
@@ -811,14 +337,14 @@ function createResponse(success, message, data = null) {
 }
 
 // ============================================================
-// INITIALIZATION & TESTING
+// SYSTEM INITIALIZATION
 // ============================================================
 
 function initialize() {
   try {
     Logger.log('Initializing system...');
     
-    // Ensure all sheets exist
+    // Create all sheets
     ensureDonationsSheet();
     ensureDonorsSheet();
     ensurePaymentsSheet();
@@ -826,10 +352,10 @@ function initialize() {
     ensureConfigurationSheet();
     ensureAuditLogSheet();
     
-    // Initialize default configuration
+    // Initialize config
     initializeDefaultConfig();
     
-    // Initialize default form fields
+    // Initialize form fields
     initializeDefaultFormFields();
     
     Logger.log('System initialization complete');
@@ -839,7 +365,47 @@ function initialize() {
     return createResponse(false, error.toString());
   }
 }
+function testValidateDonorDataAPI() {
+  const data = {
+    donor_name: 'Test Donor',
+    mobile: '9999999999',
+    email: 'test@example.com'
+  };
 
+  const response = validateDonorDataAPI(data);
+  Logger.log(response.getContent());
+}
+
+
+function testCreateDonationAPI() {
+  const data = {
+    donor_name: 'Test Donor',
+    mobile: '9999999999',
+    email: 'test@example.com',
+    address: 'Test Address',
+    city: 'Pune',
+    state: 'Maharashtra',
+    pin: '411001',
+    country: 'India',
+    amount: 100,
+    payment_method: 'UPI'
+  };
+
+  const response = createDonationAPI(data);
+  Logger.log(response.getContent());
+}
+
+
+function testSetConfigAPI() {
+  const data = {
+    key: 'test_key',
+    value: 'test_value',
+    updated_by: 'test@example.com'
+  };
+
+  const response = setConfigAPI(data);
+  Logger.log(response.getContent());
+}
 function testAll() {
   runAllDatabaseTests();
 }

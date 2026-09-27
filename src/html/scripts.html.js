@@ -2,22 +2,25 @@
 // A Ray of Hope - Donor Form Scripts
 // ============================================================
 
-// State Management
-const state = {
-  formData: {},
-  donorFormData: {},
-  donationId: null,
-  paymentMethod: null,
-  amount: 0,
-  formFields: []
-};
+// Only run this code in browser (not Apps Script server)
+if (typeof document !== 'undefined') {
+  
+  // State Management
+  const state = {
+    formData: {},
+    donorFormData: {},
+    donationId: null,
+    paymentMethod: null,
+    amount: 0,
+    formFields: []
+  };
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('Page loaded, initializing...');
-  loadFormFields();
-  setupFormEventListeners();
-});
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, initializing...');
+    loadFormFields();
+    setupFormEventListeners();
+  });
 
 // ============================================================
 // LOAD FORM FIELDS FROM DATABASE
@@ -412,4 +415,5 @@ function hideError() {
   const errorDiv = document.getElementById('errorMessage');
   errorDiv.classList.remove('show');
   errorDiv.style.display = 'none';
+}
 }
