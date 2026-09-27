@@ -1,0 +1,620 @@
+/* ============================================================
+   A Ray of Hope - Donor Form Styles
+   ============================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-color: #0066cc;
+  --primary-dark: #0052a3;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --light-bg: #f8f9fa;
+  --dark-text: #333;
+  --light-text: #666;
+  --border-color: #ddd;
+  --border-radius: 8px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --spacing-unit: 16px;
+}
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--light-bg);
+  color: var(--dark-text);
+  line-height: 1.6;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============================================================
+   Container & Layout
+   ============================================================ */
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  color: white;
+  padding: calc(var(--spacing-unit) * 2) var(--spacing-unit);
+  text-align: center;
+  box-shadow: var(--box-shadow);
+  margin-bottom: var(--spacing-unit);
+}
+
+.header-content h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.tagline {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.main-content {
+  flex: 1;
+  padding: var(--spacing-unit);
+}
+
+.footer {
+  background-color: #f1f1f1;
+  text-align: center;
+  padding: calc(var(--spacing-unit) * 1.5) var(--spacing-unit);
+  font-size: 14px;
+  color: var(--light-text);
+  margin-top: auto;
+  border-top: 1px solid var(--border-color);
+}
+
+.footer a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================
+   Steps
+   ============================================================ */
+
+.step {
+  display: none;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.step.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-title {
+  margin-bottom: calc(var(--spacing-unit) * 2);
+  text-align: center;
+}
+
+.step-title h2 {
+  font-size: 24px;
+  margin-bottom: 8px;
+  color: var(--dark-text);
+}
+
+.step-title p {
+  color: var(--light-text);
+  font-size: 16px;
+}
+
+/* ============================================================
+   Form Styles
+   ============================================================ */
+
+.form {
+  background: white;
+  padding: calc(var(--spacing-unit) * 2);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  margin-bottom: var(--spacing-unit);
+}
+
+.form-group {
+  margin-bottom: calc(var(--spacing-unit) * 1.5);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: var(--dark-text);
+  font-size: 14px;
+}
+
+.form-group label .required {
+  color: var(--danger-color);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.form-group input.error {
+  border-color: var(--danger-color);
+}
+
+.form-error {
+  color: var(--danger-color);
+  font-size: 12px;
+  margin-top: 4px;
+  display: none;
+}
+
+.form-error.show {
+  display: block;
+}
+
+.form-note {
+  text-align: center;
+  color: var(--light-text);
+  font-size: 13px;
+  margin-top: var(--spacing-unit);
+}
+
+/* ============================================================
+   Amount Section
+   ============================================================ */
+
+.amount-section {
+  margin: calc(var(--spacing-unit) * 2) 0;
+  padding: calc(var(--spacing-unit) * 1.5);
+  background-color: var(--light-bg);
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--primary-color);
+}
+
+.amount-section label {
+  font-weight: 600;
+  color: var(--dark-text);
+}
+
+.amount-section input {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 12px;
+}
+
+/* ============================================================
+   Payment Methods
+   ============================================================ */
+
+.payment-methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-unit);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.payment-option {
+  position: relative;
+}
+
+.payment-option input[type="radio"] {
+  display: none;
+}
+
+.payment-option label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--spacing-unit) * 1.5);
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.payment-option input[type="radio"]:checked + label {
+  border-color: var(--primary-color);
+  background-color: rgba(0, 102, 204, 0.05);
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.method-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.method-name {
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--dark-text);
+  margin-bottom: 4px;
+}
+
+.method-desc {
+  font-size: 12px;
+  color: var(--light-text);
+}
+
+/* ============================================================
+   Payment Details
+   ============================================================ */
+
+.payment-details {
+  background: white;
+  padding: calc(var(--spacing-unit) * 2);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.qr-section {
+  text-align: center;
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.qr-placeholder {
+  width: 200px;
+  height: 200px;
+  background-color: var(--light-bg);
+  border-radius: var(--border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto calc(var(--spacing-unit) * 1.5);
+  font-size: 14px;
+  color: var(--light-text);
+}
+
+.qr-placeholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.qr-instruction {
+  color: var(--light-text);
+  font-size: 14px;
+}
+
+.payment-info {
+  background-color: var(--light-bg);
+  padding: var(--spacing-unit);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-unit);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row .label {
+  font-weight: 500;
+  color: var(--light-text);
+}
+
+.info-row .value {
+  font-weight: 600;
+  color: var(--dark-text);
+}
+
+/* ============================================================
+   Instructions
+   ============================================================ */
+
+.payment-instructions,
+.instruction-box,
+.card-instruction,
+.cash-instruction {
+  background-color: #fffbea;
+  border-left: 4px solid var(--warning-color);
+  padding: var(--spacing-unit);
+  border-radius: var(--border-radius);
+  margin-bottom: calc(var(--spacing-unit) * 1.5);
+}
+
+.instruction-box h4,
+.payment-instructions h4 {
+  margin-bottom: 8px;
+  color: var(--dark-text);
+}
+
+.instruction-box ol,
+.payment-instructions ol {
+  margin-left: 20px;
+  line-height: 1.8;
+}
+
+.instruction-box li,
+.payment-instructions li {
+  margin-bottom: 8px;
+  color: var(--light-text);
+}
+
+/* ============================================================
+   Confirmation Message
+   ============================================================ */
+
+.confirmation-message {
+  background: white;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--box-shadow);
+}
+
+.success-box {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
+  border-left: 4px solid var(--success-color);
+  padding: calc(var(--spacing-unit) * 2);
+  text-align: center;
+}
+
+.success-box p {
+  margin-bottom: 8px;
+  color: var(--dark-text);
+}
+
+.donation-details-box {
+  padding: calc(var(--spacing-unit) * 2);
+  border-top: 1px solid var(--border-color);
+}
+
+.donation-details-box h4 {
+  margin-bottom: var(--spacing-unit);
+  color: var(--dark-text);
+}
+
+.note {
+  padding: var(--spacing-unit);
+  background-color: var(--light-bg);
+  border-radius: var(--border-radius);
+  font-size: 14px;
+  color: var(--light-text);
+  text-align: center;
+  margin-top: var(--spacing-unit);
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-dark);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: var(--light-bg);
+  color: var(--dark-text);
+  border: 1px solid var(--border-color);
+  flex: 1;
+  margin-right: 10px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #e0e0e0;
+  border-color: #999;
+}
+
+.step-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: var(--spacing-unit);
+}
+
+.step-actions .btn-primary {
+  flex: 1;
+  margin: 0;
+}
+
+.step-actions .btn-secondary {
+  flex: 1;
+  margin: 0;
+}
+
+/* ============================================================
+   Loading Spinner
+   ============================================================ */
+
+.spinner {
+  display: none;
+  text-align: center;
+  padding: calc(var(--spacing-unit) * 2);
+}
+
+.spinner.show {
+  display: block;
+}
+
+.spinner-dot {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto calc(var(--spacing-unit)) auto;
+  border: 4px solid var(--light-bg);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   Error Message
+   ============================================================ */
+
+.error-message {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: var(--border-radius);
+  color: #721c24;
+  padding: var(--spacing-unit);
+  margin-bottom: var(--spacing-unit);
+}
+
+.error-message.show {
+  display: block;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   Responsive Design
+   ============================================================ */
+
+@media (max-width: 600px) {
+  .header-content h1 {
+    font-size: 24px;
+  }
+
+  .tagline {
+    font-size: 14px;
+  }
+
+  .step-title h2 {
+    font-size: 20px;
+  }
+
+  .payment-methods {
+    grid-template-columns: 1fr;
+  }
+
+  .step-actions {
+    flex-direction: column;
+  }
+
+  .step-actions .btn-secondary {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+
+  .form {
+    padding: var(--spacing-unit);
+  }
+
+  .payment-details {
+    padding: var(--spacing-unit);
+  }
+
+  .qr-placeholder {
+    width: 160px;
+    height: 160px;
+  }
+
+  .method-icon {
+    font-size: 28px;
+  }
+}
+
+/* ============================================================
+   Print Styles
+   ============================================================ */
+
+@media print {
+  .header,
+  .footer,
+  .step-actions,
+  .btn {
+    display: none;
+  }
+
+  .container {
+    background: white;
+    box-shadow: none;
+  }
+
+  .main-content {
+    padding: 0;
+  }
+}

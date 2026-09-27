@@ -572,3 +572,274 @@ function quickTest() {
     Logger.log(`✗ Quick test failed: ${error}`);
   }
 }
+
+/**
+ * A Ray of Hope - Donation & Receipt Automation System
+ * Phase 3: Donor Web Interface
+ * 
+ * Updated handlers for form submission and payment processing
+ */
+
+// ============================================================
+// WEB APP ENTRY POINT
+// ============================================================
+
+function doGet(e) {
+  try {
+    const page = e.parameter.page || 'donor-form';
+    
+    switch (page) {
+      case 'admin':
+        return handleAdminPage(e);
+      case 'donor-form':
+      default:
+        return handleDonorFormPage(e);
+    }
+  } catch (error) {
+    Logger.log(`Error in doGet: ${error}`);
+    return HtmlService.createHtmlOutput(`
+      <h1>Error</h1>
+      <p>An error occurred. Please try again later.</p>
+      <p>${error.toString()}</p>
+    `);
+  }
+}
+
+// ============================================================
+// PAGE HANDLERS
+// ============================================================
+
+function handleDonorFormPage(e) {
+  try {
+    const html = HtmlService.createTemplateFromFile('html/donor-form')
+      .evaluate()
+      .setXFrameOptions(HtmlService.XFrameOptions.ALLOWALL);
+    return html;
+  } catch (error) {
+    Logger.log(`Error loading donor form: ${error}`);
+    return HtmlService.createHtmlOutput(`
+      <h1>Error Loading Form</h1>
+      <p>${error.toString()}</p>
+    `);
+  }
+}
+
+function handleAdminPage(e) {
+  try {
+    const html = HtmlService.createTemplateFromFile('html/admin-dashboard')
+      .evaluate()
+      .setXFrameOptions(HtmlService.XFrameOptions.ALLOWALL);
+    return html;
+  } catch (error) {
+    Logger.log(`Error loading admin page: ${error}`);
+    return HtmlService.createHtmlOutput(`
+      <h1>Error Loading Admin Panel</h1>
+      <p>${error.toString()}</p>
+    `);
+  }
+}
+
+// ============================================================
+// API ENDPOINTS - FORM FIELDS
+// ============================================================
+
+function getFormFields() {
+  try {
+    const fields = getActiveFormFields();
+    return createResponse(true, 'Form fields retrieved', {
+      fields: fields
+    });
+  } catch (error) {
+    Logger.log(`Error getting form fields: ${error}`);
+    return createResponse(false, error.toString());
+  }
+}
+
+function getFormFieldValidation() {
+  try {
+    const rules = getFormFieldValidationRules();
+    return createResponse(true, 'Validation rules retrieved', {
+      rules: rules
+    });
+  } catch (error) {
+    Logger.log(`Error getting validation rules: ${error}`);
+    return createResponse(false, error.toString());
+  }
+}
+
+function validateDonorData(data) {
+  try {
+    const result = validateDonorData(data);
+    return createResponse(result.valid, result.valid ? 'Valid' : 'Validation failed', {
+      errors: result.errors
+    });
+  } catch (error) {
+    Logger.log(`Error validating data: ${error}`);
+    return createResponse(false, error.toString());
+  }
+}
+
+// ============================================================
+// API ENDPOINTS - DONATION CREATION
+// ============================================================
+
+function createDonation(data) {
+  try {
+    Logger.log('Creating donation with data: ' + JSON.stringify(data));
+    
+    // Create/get donor first
+    const donor = createOrGetDonor({
+      name: data.donor_name || '',
+      mobile: data.mobile || '',
+      email: data.email || '',
+      address: data.address || '',
+      city: data.city || '',
+      state: data.state || '',
+      pin: data.pin || '',
+      country: data.country || 'India',
+      pan: data.pan || '',
+      dob: data.dob || '',
+      occupation: data.occupation || '',
+      company: data.company || ''
+    });
+    
+    Logger.log('Donor created/retrieved: ' + donor.donor_id);
+    
+    // Create donation
+    const donation = createDonation({
+      donor_id: donor.donor_id,
+      amount: parseFloat(data.amount),
+      payment_method: data.payment_method
+    });
+    
+    Logger.log('Donation created: ' + donation.donation_id);
+    
+    // Create payment record
+    const payment = createPayment({
+      donation_id: donation.donation_id,
+      amount: donation.amount,
+      payment_method: donation.payment_method
+    });
+    
+    Logger.log('Payment created: ' + payment.payment_id);
+    
+    return createResponse(true, 'Donation created', {
+      donation: donation,
+      donor: donor,
+      payment: payment
+    });
+  } catch (error) {
+    Logger.log(`Error creating donation: ${error}`);
+    return createResponse(false, error.toString());
+  }
+}
+
+// ============================================================
+// API ENDPOINTS - PAYMENT CONFIRMATION
+// ============================================================
+
+function markPaymentPending(data) {
+  try {
+    if (!data.donation_id) {
+      return createResponse(false, 'donation_id required');
+    }
+    
+    const donation = getDonationById(data.donation_id);
+    if (!donation) {
+      return createResponse(false, 'Donation not found');
+    }
+    
+    markAwaitingConfirmation(data.donation_id);
+    
+    Logger.log('Donation marked as awaiting confirmation: ' + data.donation_id);
+    
+    return createResponse(true, 'Payment marked as pending', {
+      donation_id: data.donation_id
+    });
+  } catch (error) {
+    Logger.log(`Error marking payment pending: ${error}`);
+    return createResponse(false, error.toString());
+  }
+}
+
+// ============================================================
+// API ENDPOINTS - CONFIGURATION
+// ============================================================
+
+function getConfig(data) {
+  try {
+    if (!data.key) {
+      return createResponse(false, 'key required');
+    }
+    
+    const value = getConfig(data.key);
+    return createResponse(true, 'Config retrieved', {
+      [data.key]: value
+    });
+  } catch (error) {
+    Logger.log(`Error getting config: ${error}`);
+    return createResponse(false, error.toString());
+  }
+}
+
+function setConfig(data) {
+  try {
+    if (!data.key || data.value === undefined) {
+      return createResponse(false, 'key and value required');
+    }
+    
+    setConfig(data.key, data.value, data.updated_by || 'admin@org.com');
+    return createResponse(true, 'Config updated');
+  } catch (error) {
+    Logger.log(`Error setting config: ${error}`);
+    return createResponse(false, error.toString());
+  }
+}
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
+function createResponse(success, message, data = null) {
+  return ContentService
+    .createTextOutput(JSON.stringify({
+      success: success,
+      message: message,
+      data: data
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================
+// INITIALIZATION & TESTING
+// ============================================================
+
+function initialize() {
+  try {
+    Logger.log('Initializing system...');
+    
+    // Ensure all sheets exist
+    ensureDonationsSheet();
+    ensureDonorsSheet();
+    ensurePaymentsSheet();
+    ensureFormFieldsSheet();
+    ensureConfigurationSheet();
+    ensureAuditLogSheet();
+    
+    // Initialize default configuration
+    initializeDefaultConfig();
+    
+    // Initialize default form fields
+    initializeDefaultFormFields();
+    
+    Logger.log('System initialization complete');
+    return createResponse(true, 'System initialized');
+  } catch (error) {
+    Logger.log(`Initialization error: ${error}`);
+    return createResponse(false, error.toString());
+  }
+}
+
+function testAll() {
+  runAllDatabaseTests();
+}

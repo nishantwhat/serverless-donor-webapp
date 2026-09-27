@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A Ray of Hope - Donation Form</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <h1>A Ray of Hope</h1>
+        <p class="tagline">Make a Difference Today</p>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Step 1: Donor Form -->
+      <div id="stepDonorForm" class="step active">
+        <div class="step-title">
+          <h2>1. Your Information</h2>
+          <p>Help us know you better</p>
+        </div>
+        
+        <form id="donorForm" class="form">
+          <div id="formFields"></div>
+          
+          <div class="amount-section">
+            <label for="donationAmount">Donation Amount (₹)</label>
+            <input type="number" id="donationAmount" name="amount" placeholder="e.g., 5000" min="1" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Continue to Payment</button>
+          <p class="form-note">Your information is secure and private</p>
+        </form>
+      </div>
+
+      <!-- Step 2: Payment Method -->
+      <div id="stepPaymentMethod" class="step">
+        <div class="step-title">
+          <h2>2. Choose Payment Method</h2>
+          <p>Select how you'd like to donate</p>
+        </div>
+
+        <div class="payment-methods">
+          <div class="payment-option" data-method="UPI">
+            <input type="radio" id="paymentUPI" name="paymentMethod" value="UPI" required>
+            <label for="paymentUPI">
+              <span class="method-icon">📱</span>
+              <span class="method-name">UPI</span>
+              <span class="method-desc">Scan & Pay</span>
+            </label>
+          </div>
+
+          <div class="payment-option" data-method="CARD">
+            <input type="radio" id="paymentCARD" name="paymentMethod" value="CARD" required>
+            <label for="paymentCARD">
+              <span class="method-icon">💳</span>
+              <span class="method-name">Card</span>
+              <span class="method-desc">Card Machine</span>
+            </label>
+          </div>
+
+          <div class="payment-option" data-method="CASH">
+            <input type="radio" id="paymentCASH" name="paymentMethod" value="CASH" required>
+            <label for="paymentCASH">
+              <span class="method-icon">💵</span>
+              <span class="method-name">Cash</span>
+              <span class="method-desc">In Person</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button type="button" class="btn btn-secondary" onclick="goBackToForm()">Back</button>
+          <button type="button" class="btn btn-primary" onclick="proceedToPayment()">Proceed to Payment</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Payment Processing (UPI) -->
+      <div id="stepUPIPayment" class="step">
+        <div class="step-title">
+          <h2>3. Complete UPI Payment</h2>
+          <p>Scan the QR code with your UPI app</p>
+        </div>
+
+        <div class="payment-details">
+          <div class="qr-section">
+            <div id="qrCode" class="qr-placeholder">Loading QR Code...</div>
+            <p class="qr-instruction">Use any UPI app to scan this QR code</p>
+          </div>
+
+          <div class="payment-info">
+            <div class="info-row">
+              <span class="label">Amount:</span>
+              <span class="value" id="upiAmount">₹0</span>
+            </div>
+            <div class="info-row">
+              <span class="label">UPI ID:</span>
+              <span class="value" id="upiId">Loading...</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Donation ID:</span>
+              <span class="value" id="upiDonationId">--</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="payment-instructions">
+          <h4>Steps:</h4>
+          <ol>
+            <li>Open your UPI app (Google Pay, PhonePe, Paytm, etc.)</li>
+            <li>Tap "Send Money" or "Pay by QR"</li>
+            <li>Scan the QR code above</li>
+            <li>Enter amount and confirm</li>
+            <li>Click "I have completed payment" below</li>
+          </ol>
+        </div>
+
+        <div class="step-actions">
+          <button type="button" class="btn btn-secondary" onclick="goBackToPaymentMethod()">Change Method</button>
+          <button type="button" class="btn btn-primary" onclick="confirmUPIPayment()">I have completed payment</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Payment Processing (CARD) -->
+      <div id="stepCardPayment" class="step">
+        <div class="step-title">
+          <h2>3. Card Payment</h2>
+          <p>Use the NGO's card machine</p>
+        </div>
+
+        <div class="payment-details">
+          <div class="card-instruction">
+            <div class="instruction-box">
+              <h4>🏪 Payment Process:</h4>
+              <ol>
+                <li>Inform the staff member of your donation amount</li>
+                <li>Use the NGO's card machine to complete payment</li>
+                <li>Return here and click "I have completed payment"</li>
+              </ol>
+            </div>
+
+            <div class="payment-info">
+              <div class="info-row">
+                <span class="label">Amount:</span>
+                <span class="value" id="cardAmount">₹0</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Donation ID:</span>
+                <span class="value" id="cardDonationId">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button type="button" class="btn btn-secondary" onclick="goBackToPaymentMethod()">Change Method</button>
+          <button type="button" class="btn btn-primary" onclick="confirmCardPayment()">I have completed payment</button>
+        </div>
+      </div>
+
+      <!-- Step 5: Payment Processing (CASH) -->
+      <div id="stepCashPayment" class="step">
+        <div class="step-title">
+          <h2>3. Cash Donation</h2>
+          <p>Thank you for your support</p>
+        </div>
+
+        <div class="payment-details">
+          <div class="cash-instruction">
+            <div class="instruction-box">
+              <h4>💵 Cash Donation:</h4>
+              <p>Thank you for choosing to donate in cash. Please provide this amount to the staff member.</p>
+            </div>
+
+            <div class="payment-info">
+              <div class="info-row">
+                <span class="label">Amount:</span>
+                <span class="value" id="cashAmount">₹0</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Donation ID:</span>
+                <span class="value" id="cashDonationId">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button type="button" class="btn btn-secondary" onclick="goBackToPaymentMethod()">Change Method</button>
+          <button type="button" class="btn btn-primary" onclick="confirmCashPayment()">I have completed payment</button>
+        </div>
+      </div>
+
+      <!-- Step 6: Confirmation -->
+      <div id="stepConfirmation" class="step">
+        <div class="step-title">
+          <h2>✓ Thank You!</h2>
+          <p>Your donation has been submitted</p>
+        </div>
+
+        <div class="confirmation-message">
+          <div class="success-box">
+            <p>Your donation of <strong id="confirmAmount">₹0</strong> has been received.</p>
+            <p>A confirmation receipt will be available shortly after our team verifies the payment.</p>
+          </div>
+
+          <div class="donation-details-box">
+            <h4>Donation Details:</h4>
+            <div class="info-row">
+              <span class="label">Donation ID:</span>
+              <span class="value" id="confirmDonationId">--</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Payment Method:</span>
+              <span class="value" id="confirmPaymentMethod">--</span>
+            </div>
+            <div class="info-row">
+              <span class="label">Status:</span>
+              <span class="value" id="confirmStatus">Awaiting Confirmation</span>
+            </div>
+          </div>
+
+          <p class="note">
+            We will send you a receipt via email (if provided) once our team confirms your payment.
+          </p>
+        </div>
+
+        <div class="step-actions">
+          <button type="button" class="btn btn-primary" onclick="startNewDonation()">Make Another Donation</button>
+          <button type="button" class="btn btn-secondary" onclick="downloadReceipt()" id="downloadBtn" style="display:none;">Download Receipt</button>
+        </div>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div id="loadingSpinner" class="spinner">
+        <div class="spinner-dot"></div>
+        <p>Processing...</p>
+      </div>
+
+      <!-- Error Message -->
+      <div id="errorMessage" class="error-message" style="display:none;"></div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>&copy; 2026 A Ray of Hope. All donations are secure and private.</p>
+      <p>Tax ID: 80G Registered | <a href="#">Privacy Policy</a> | <a href="#">Contact Us</a></p>
+    </footer>
+  </div>
+
+  <script src="scripts.js"></script>
+</body>
+</html>
