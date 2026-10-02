@@ -135,7 +135,9 @@ function handleDonorFormPage(e) {
   try {
     const html = HtmlService
       .createTemplateFromFile('html/donor-form')
-      .evaluate();
+      .evaluate()
+      .setTitle('A Ray of Hope - Donation Form')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
     return html;
 
@@ -152,7 +154,9 @@ function handleAdminPage(e) {
   try {
     const html = HtmlService
       .createTemplateFromFile('html/admin-dashboard')
-      .evaluate();
+      .evaluate()
+      .setTitle('A Ray of Hope - Admin Panel')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
     return html;
 
@@ -164,6 +168,138 @@ function handleAdminPage(e) {
     `);
   }
 }
+
+function include(filename) {
+  try {
+    return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  } catch (e1) {
+    try {
+      const stripped = filename.replace(/\.(html|css|js|gs)$/, '');
+      return HtmlService.createHtmlOutputFromFile(stripped).getContent();
+    } catch (e2) {
+      try {
+        const withHtml = filename.endsWith('.html') ? filename : filename + '.html';
+        return HtmlService.createHtmlOutputFromFile(withHtml).getContent();
+      } catch (e3) {
+        try {
+          const basename = filename.split('/').pop().replace(/\.(html|css|js|gs)$/, '');
+          return HtmlService.createHtmlOutputFromFile(basename).getContent();
+        } catch (e4) {
+          Logger.log(`Include error for ${filename}: ${e4}`);
+          return '';
+        }
+      }
+    }
+  }
+}
+
+// ============================================================
+// CLIENT API WRAPPERS (For google.script.run)
+// ============================================================
+
+function getFormFieldsClient() {
+  try {
+    const fields = getActiveFormFields();
+    return { success: true, message: 'Form fields retrieved', data: { fields: fields } };
+  } catch (error) {
+    Logger.log(`Error in getFormFieldsClient: ${error}`);
+    return { success: false, message: error.toString(), data: null };
+  }
+}
+
+function validateDonorDataClient(data) {
+  try {
+    if (!data) return { success: false, message: 'Request data is missing', data: null };
+    const result = validateDonorData(data);
+    return {
+      success: result.valid,
+      message: result.valid ? 'Valid' : 'Validation failed',
+      data: { errors: result.errors }
+    };
+  } catch (error) {
+    Logger.log(`Error in validateDonorDataClient: ${error}`);
+    return { success: false, message: error.toString(), data: null };
+  }
+}
+
+function createDonationClient(data) {
+  try {
+    if (!data) return { success: false, message: 'Request data is missing', data: null };
+
+    const donor = createOrGetDonor({
+      name: data.donor_name || '',
+      mobile: data.mobile || '',
+      email: data.email || '',
+      address: data.address || '',
+      city: data.city || '',
+      state: data.state || '',
+      pin: data.pin || '',
+      country: data.country || 'India',
+      pan: data.pan || '',
+      dob: data.dob || '',
+      occupation: data.occupation || '',
+      company: data.company || ''
+    });
+
+    const donation = createDonation({
+      donor_id: donor.donor_id,
+      amount: parseFloat(data.amount),
+      payment_method: data.payment_method
+    });
+
+    const payment = createPayment({
+      donation_id: donation.donation_id,
+      amount: donation.amount,
+      payment_method: donation.payment_method
+    });
+
+    return {
+      success: true,
+      message: 'Donation created',
+      data: { donation: donation, donor: donor, payment: payment }
+    };
+  } catch (error) {
+    Logger.log(`Error in createDonationClient: ${error}`);
+    return { success: false, message: error.toString(), data: null };
+  }
+}
+
+function markPaymentPendingClient(data) {
+  try {
+    if (!data || !data.donation_id) {
+      return { success: false, message: 'donation_id required', data: null };
+    }
+    markAwaitingConfirmation(data.donation_id);
+    return { success: true, message: 'Payment marked as pending', data: { donation_id: data.donation_id } };
+  } catch (error) {
+    Logger.log(`Error in markPaymentPendingClient: ${error}`);
+    return { success: false, message: error.toString(), data: null };
+  }
+}
+
+function getConfigClient(data) {
+  try {
+    const key = (typeof data === 'object' && data !== null) ? data.key : data;
+    if (!key) return { success: false, message: 'key required', data: null };
+    const value = getConfig(key);
+    return {
+      success: true,
+      message: 'Config retrieved',
+      data: {
+        [key]: value,
+        org_upi_id: key === 'org_upi_id' ? value : undefined,
+        org_upi_qr_url: key === 'org_upi_qr_url' ? value : undefined
+      }
+    };
+  } catch (error) {
+    Logger.log(`Error in getConfigClient: ${error}`);
+    return { success: false, message: error.toString(), data: null };
+  }
+}
+
+function getFormFields() { return getFormFieldsClient(); }
+function markPaymentPending(data) { return markPaymentPendingClient(data); }
+
 // ============================================================
 // API HANDLERS (Call Phase 2 database functions)
 // ============================================================
@@ -335,7 +471,6 @@ function createResponse(success, message, data = null) {
     }))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
 // ============================================================
 // SYSTEM INITIALIZATION
 // ============================================================

@@ -38,8 +38,21 @@ function createOrGetDonor(donorData) {
     let existingDonor = findDonorByMobile(donorData.mobile);
     if (existingDonor) {
       Logger.log(`Donor found: ${existingDonor.donor_id}`);
-      // Update if new data provided
-      updateDonor(existingDonor.donor_id, donorData);
+      
+      // Only update if new non-empty field values differ from existing record
+      const changes = {};
+      const checkFields = ['name', 'email', 'address', 'city', 'state', 'pin', 'country', 'pan', 'dob', 'occupation', 'company'];
+      for (let field of checkFields) {
+        if (donorData[field] && donorData[field] !== existingDonor[field]) {
+          changes[field] = donorData[field];
+        }
+      }
+      
+      if (Object.keys(changes).length > 0) {
+        updateDonor(existingDonor.donor_id, changes);
+        return getDonorById(existingDonor.donor_id);
+      }
+      
       return existingDonor;
     }
     
@@ -154,7 +167,7 @@ function updateDonor(donorId, updateData) {
     
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === donorId) {
-        updateRow(SHEET_NAMES.DONORS, i - 1, updated);
+        updateRow(SHEET_NAMES.DONORS, i + 1, updated);
         
         // Log action
         logAudit(AUDIT_ACTION.UPDATED, AUDIT_ENTITY_TYPE.DONOR, donorId, currentDonor, updated);

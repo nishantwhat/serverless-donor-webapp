@@ -220,13 +220,13 @@ function appendRow(sheetName, rowData) {
 }
 
 /**
- * Update a row in a sheet
+ * Update a row in a sheet by its 1-based sheet row number (Row 1 = Header, Row 2 = First Data Row)
  * @param {string} sheetName - Name of sheet
- * @param {number} rowIndex - Row number (1-based, excluding header)
+ * @param {number} sheetRowIndex - 1-based Sheet Row index (must be >= 2)
  * @param {Object} rowData - Object with column-value pairs to update
  * @returns {boolean} True if successful
  */
-function updateRow(sheetName, rowIndex, rowData) {
+function updateRow(sheetName, sheetRowIndex, rowData) {
   try {
     const sheet = getSheet(sheetName);
     const data = sheet.getDataRange().getValues();
@@ -235,19 +235,22 @@ function updateRow(sheetName, rowIndex, rowData) {
       throw new Error(`Sheet ${sheetName} has no headers`);
     }
     
+    if (!sheetRowIndex || sheetRowIndex <= 1) {
+      throw new Error(`Invalid sheetRowIndex ${sheetRowIndex}. Cannot overwrite header row 1.`);
+    }
+    
     const headers = data[0];
-    const actualRow = rowIndex + 1;  // +1 for 1-based indexing
     
     for (let col = 0; col < headers.length; col++) {
       const header = headers[col];
       if (rowData.hasOwnProperty(header)) {
-        sheet.getRange(actualRow, col + 1).setValue(rowData[header]);
+        sheet.getRange(sheetRowIndex, col + 1).setValue(rowData[header]);
       }
     }
     
     return true;
   } catch (error) {
-    Logger.log(`Error updating row: ${error}`);
+    Logger.log(`Error updating row in ${sheetName}: ${error}`);
     return false;
   }
 }
