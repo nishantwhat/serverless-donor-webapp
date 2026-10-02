@@ -1,26 +1,24 @@
+<script>
 // ============================================================
 // A Ray of Hope - Donor Form Scripts
 // ============================================================
 
-// Only run this code in browser (not Apps Script server)
-if (typeof document !== 'undefined') {
-  
-  // State Management
-  const state = {
-    formData: {},
-    donorFormData: {},
-    donationId: null,
-    paymentMethod: null,
-    amount: 0,
-    formFields: []
-  };
+// State Management
+const state = {
+  formData: {},
+  donorFormData: {},
+  donationId: null,
+  paymentMethod: null,
+  amount: 0,
+  formFields: []
+};
 
-  // Initialize on page load
-  document.addEventListener('DOMContentLoaded', function() {
-    console.log('Page loaded, initializing...');
-    loadFormFields();
-    setupFormEventListeners();
-  });
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Page loaded, initializing...');
+  loadFormFields();
+  setupFormEventListeners();
+});
 
 // ============================================================
 // LOAD FORM FIELDS FROM DATABASE
@@ -30,21 +28,22 @@ function loadFormFields() {
   console.log('Loading form fields...');
   
   google.script.run.withSuccessHandler(function(response) {
-    if (response.success) {
-      state.formFields = response.data.fields;
+    if (response && (response.success || response.data)) {
+      state.formFields = (response.data && response.data.fields) || response.fields || [];
       console.log('Loaded ' + state.formFields.length + ' form fields');
       renderFormFields();
     } else {
-      showError('Failed to load form fields: ' + response.message);
+      showError('Failed to load form fields: ' + (response ? response.message : 'Unknown error'));
     }
   }).withFailureHandler(function(error) {
     console.error('Error loading form fields:', error);
     showError('Error loading form. Please refresh the page.');
-  }).getFormFields();
+  }).getFormFieldsClient();
 }
 
 function renderFormFields() {
   const container = document.getElementById('formFields');
+  if (!container) return;
   container.innerHTML = '';
   
   state.formFields.forEach(field => {
@@ -57,19 +56,19 @@ function renderFormFields() {
     
     switch(field.type) {
       case 'email':
-        input = `<input type="email" name="${field.field_key}" placeholder="${field.placeholder}" ${requiredAttr}>`;
+        input = `<input type="email" name="${field.field_key}" placeholder="${field.placeholder || ''}" ${requiredAttr}>`;
         break;
       case 'phone':
-        input = `<input type="tel" name="${field.field_key}" placeholder="${field.placeholder}" ${requiredAttr}>`;
+        input = `<input type="tel" name="${field.field_key}" placeholder="${field.placeholder || ''}" ${requiredAttr}>`;
         break;
       case 'number':
-        input = `<input type="number" name="${field.field_key}" placeholder="${field.placeholder}" ${requiredAttr}>`;
+        input = `<input type="number" name="${field.field_key}" placeholder="${field.placeholder || ''}" ${requiredAttr}>`;
         break;
       case 'date':
         input = `<input type="date" name="${field.field_key}" ${requiredAttr}>`;
         break;
       case 'textarea':
-        input = `<textarea name="${field.field_key}" placeholder="${field.placeholder}" ${requiredAttr}></textarea>`;
+        input = `<textarea name="${field.field_key}" placeholder="${field.placeholder || ''}" ${requiredAttr}></textarea>`;
         break;
       case 'dropdown':
         const options = field.options ? field.options.split(',').map(opt => opt.trim()) : [];
@@ -82,7 +81,7 @@ function renderFormFields() {
         input = `<input type="checkbox" name="${field.field_key}" id="${field.field_key}">`;
         break;
       default:
-        input = `<input type="text" name="${field.field_key}" placeholder="${field.placeholder}" ${requiredAttr}>`;
+        input = `<input type="text" name="${field.field_key}" placeholder="${field.placeholder || ''}" ${requiredAttr}>`;
     }
     
     group.innerHTML = `
@@ -114,8 +113,8 @@ function setupFormEventListeners() {
 function submitDonorForm() {
   console.log('Submitting donor form...');
   
-  // Collect form data
-  const formData = new FormData(document.getElementById('donorForm'));
+  const formEl = document.getElementById('donorForm');
+  const formData = new FormData(formEl);
   
   state.donorFormData = {
     donor_name: formData.get('donor_name') || '',
@@ -139,19 +138,19 @@ function submitDonorForm() {
     return;
   }
   
-  // Validate data
   console.log('Validating donor data...');
   google.script.run.withSuccessHandler(function(response) {
-    if (response.success) {
+    if (response && (response.success || response.valid)) {
       console.log('Validation passed');
       showStep('stepPaymentMethod');
     } else {
-      showError('Validation failed: ' + response.data.errors.join(', '));
+      const errs = (response && response.data && response.data.errors) || (response && response.errors) || [];
+      showError('Validation failed: ' + (errs.join ? errs.join(', ') : errs));
     }
   }).withFailureHandler(function(error) {
     console.error('Validation error:', error);
     showError('Error validating form. Please check your entries.');
-  }).validateDonorData(state.donorFormData);
+  }).validateDonorDataClient(state.donorFormData);
 }
 
 // ============================================================
@@ -159,17 +158,16 @@ function submitDonorForm() {
 // ============================================================
 
 function showStep(stepId) {
-  // Hide all steps
   document.querySelectorAll('.step').forEach(step => {
     step.classList.remove('active');
   });
   
-  // Show target step
-  document.getElementById(stepId).classList.add('active');
+  const target = document.getElementById(stepId);
+  if (target) {
+    target.classList.add('active');
+  }
   
-  // Scroll to top
   window.scrollTo(0, 0);
-  
   console.log('Showing step: ' + stepId);
 }
 
@@ -194,26 +192,29 @@ function proceedToPayment() {
   console.log('Creating donation with method: ' + state.paymentMethod);
   showSpinner(true);
   
-  // Create donation
   google.script.run.withSuccessHandler(function(response) {
     showSpinner(false);
     
-    if (response.success) {
+    if (response && response.success) {
       const donation = response.data.donation;
       state.donationId = donation.donation_id;
       
       console.log('Donation created: ' + state.donationId);
       
-      // Display amount and donation ID
-      document.getElementById('upiAmount').textContent = '₹' + state.amount;
-      document.getElementById('cardAmount').textContent = '₹' + state.amount;
-      document.getElementById('cashAmount').textContent = '₹' + state.amount;
+      const upiEl = document.getElementById('upiAmount');
+      const cardEl = document.getElementById('cardAmount');
+      const cashEl = document.getElementById('cashAmount');
+      if (upiEl) upiEl.textContent = '₹' + state.amount;
+      if (cardEl) cardEl.textContent = '₹' + state.amount;
+      if (cashEl) cashEl.textContent = '₹' + state.amount;
       
-      document.getElementById('upiDonationId').textContent = state.donationId;
-      document.getElementById('cardDonationId').textContent = state.donationId;
-      document.getElementById('cashDonationId').textContent = state.donationId;
+      const upiIdEl = document.getElementById('upiDonationId');
+      const cardIdEl = document.getElementById('cardDonationId');
+      const cashIdEl = document.getElementById('cashDonationId');
+      if (upiIdEl) upiIdEl.textContent = state.donationId;
+      if (cardIdEl) cardIdEl.textContent = state.donationId;
+      if (cashIdEl) cashIdEl.textContent = state.donationId;
       
-      // Show relevant payment step
       if (state.paymentMethod === 'UPI') {
         loadUPIQR();
         showStep('stepUPIPayment');
@@ -223,13 +224,13 @@ function proceedToPayment() {
         showStep('stepCashPayment');
       }
     } else {
-      showError('Error creating donation: ' + response.message);
+      showError('Error creating donation: ' + (response ? response.message : 'Unknown error'));
     }
   }).withFailureHandler(function(error) {
     showSpinner(false);
     console.error('Error creating donation:', error);
     showError('Error creating donation. Please try again.');
-  }).createDonation({
+  }).createDonationClient({
     donor_name: state.donorFormData.donor_name,
     mobile: state.donorFormData.mobile,
     email: state.donorFormData.email,
@@ -248,7 +249,7 @@ function proceedToPayment() {
 }
 
 // ============================================================
-// UPI PAYMENT
+// PAYMENT CONFIRMATIONS
 // ============================================================
 
 function loadUPIQR() {
@@ -257,35 +258,24 @@ function loadUPIQR() {
   
   google.script.run.withSuccessHandler(function(response) {
     showSpinner(false);
-    
-    if (response.success) {
-      const upiId = response.data.org_upi_id;
-      const qrUrl = response.data.org_upi_qr_url;
-      
-      document.getElementById('upiId').textContent = upiId;
-      
-      if (qrUrl) {
-        const qrContainer = document.getElementById('qrCode');
-        qrContainer.innerHTML = `<img src="${qrUrl}" alt="UPI QR Code">`;
-      }
-      
-      console.log('UPI QR loaded');
-    } else {
-      showError('Error loading UPI details: ' + response.message);
+    if (response && response.success) {
+      const upiId = response.data.org_upi_id || response.data[response.key] || '';
+      const upiIdEl = document.getElementById('upiId');
+      if (upiIdEl && upiId) upiIdEl.textContent = upiId;
     }
   }).withFailureHandler(function(error) {
     showSpinner(false);
     console.error('Error loading UPI QR:', error);
-    showError('Error loading UPI details.');
-  }).getConfig({key: 'org_upi_id'});
+  }).getConfigClient({key: 'org_upi_id'});
   
-  // Also get QR code
   google.script.run.withSuccessHandler(function(response) {
-    if (response.success && response.data.org_upi_qr_url) {
+    if (response && response.success && response.data && response.data.org_upi_qr_url) {
       const qrContainer = document.getElementById('qrCode');
-      qrContainer.innerHTML = `<img src="${response.data.org_upi_qr_url}" alt="UPI QR Code">`;
+      if (qrContainer) {
+        qrContainer.innerHTML = `<img src="${response.data.org_upi_qr_url}" alt="UPI QR Code">`;
+      }
     }
-  }).getConfig({key: 'org_upi_qr_url'});
+  }).getConfigClient({key: 'org_upi_qr_url'});
 }
 
 function confirmUPIPayment() {
@@ -294,23 +284,18 @@ function confirmUPIPayment() {
   
   google.script.run.withSuccessHandler(function(response) {
     showSpinner(false);
-    
-    if (response.success) {
+    if (response && response.success) {
       console.log('UPI payment confirmed');
       showConfirmation();
     } else {
-      showError('Error confirming payment: ' + response.message);
+      showError('Error confirming payment: ' + (response ? response.message : 'Unknown error'));
     }
   }).withFailureHandler(function(error) {
     showSpinner(false);
     console.error('Error confirming payment:', error);
     showError('Error confirming payment. Please try again.');
-  }).markPaymentPending({donation_id: state.donationId});
+  }).markPaymentPendingClient({donation_id: state.donationId});
 }
-
-// ============================================================
-// CARD PAYMENT
-// ============================================================
 
 function confirmCardPayment() {
   console.log('Confirming card payment...');
@@ -318,23 +303,18 @@ function confirmCardPayment() {
   
   google.script.run.withSuccessHandler(function(response) {
     showSpinner(false);
-    
-    if (response.success) {
+    if (response && response.success) {
       console.log('Card payment confirmed');
       showConfirmation();
     } else {
-      showError('Error confirming payment: ' + response.message);
+      showError('Error confirming payment: ' + (response ? response.message : 'Unknown error'));
     }
   }).withFailureHandler(function(error) {
     showSpinner(false);
     console.error('Error confirming payment:', error);
     showError('Error confirming payment. Please try again.');
-  }).markPaymentPending({donation_id: state.donationId});
+  }).markPaymentPendingClient({donation_id: state.donationId});
 }
-
-// ============================================================
-// CASH PAYMENT
-// ============================================================
 
 function confirmCashPayment() {
   console.log('Confirming cash payment...');
@@ -342,40 +322,39 @@ function confirmCashPayment() {
   
   google.script.run.withSuccessHandler(function(response) {
     showSpinner(false);
-    
-    if (response.success) {
+    if (response && response.success) {
       console.log('Cash payment confirmed');
       showConfirmation();
     } else {
-      showError('Error confirming payment: ' + response.message);
+      showError('Error confirming payment: ' + (response ? response.message : 'Unknown error'));
     }
   }).withFailureHandler(function(error) {
     showSpinner(false);
     console.error('Error confirming payment:', error);
     showError('Error confirming payment. Please try again.');
-  }).markPaymentPending({donation_id: state.donationId});
+  }).markPaymentPendingClient({donation_id: state.donationId});
 }
 
-// ============================================================
-// CONFIRMATION
-// ============================================================
-
 function showConfirmation() {
-  document.getElementById('confirmAmount').textContent = '₹' + state.amount;
-  document.getElementById('confirmDonationId').textContent = state.donationId;
-  document.getElementById('confirmPaymentMethod').textContent = state.paymentMethod;
-  document.getElementById('confirmStatus').textContent = 'Awaiting Confirmation';
+  const confirmAmt = document.getElementById('confirmAmount');
+  const confirmId = document.getElementById('confirmDonationId');
+  const confirmMethod = document.getElementById('confirmPaymentMethod');
+  const confirmStatus = document.getElementById('confirmStatus');
+  
+  if (confirmAmt) confirmAmt.textContent = '₹' + state.amount;
+  if (confirmId) confirmId.textContent = state.donationId;
+  if (confirmMethod) confirmMethod.textContent = state.paymentMethod;
+  if (confirmStatus) confirmStatus.textContent = 'Awaiting Confirmation';
   
   showStep('stepConfirmation');
 }
 
 function startNewDonation() {
-  // Reset form
-  document.getElementById('donorForm').reset();
+  const formEl = document.getElementById('donorForm');
+  if (formEl) formEl.reset();
   state.donationId = null;
   state.paymentMethod = null;
   state.amount = 0;
-  
   showStep('stepDonorForm');
 }
 
@@ -383,12 +362,9 @@ function downloadReceipt() {
   alert('Receipt download will be available after admin confirmation.');
 }
 
-// ============================================================
-// UTILITY FUNCTIONS
-// ============================================================
-
 function showSpinner(show) {
   const spinner = document.getElementById('loadingSpinner');
+  if (!spinner) return;
   if (show) {
     spinner.classList.add('show');
   } else {
@@ -398,13 +374,12 @@ function showSpinner(show) {
 
 function showError(message) {
   const errorDiv = document.getElementById('errorMessage');
+  if (!errorDiv) return;
   errorDiv.textContent = message;
   errorDiv.classList.add('show');
   errorDiv.style.display = 'block';
   
   console.error('Error:', message);
-  
-  // Auto-hide after 5 seconds
   setTimeout(() => {
     errorDiv.classList.remove('show');
     errorDiv.style.display = 'none';
@@ -413,7 +388,20 @@ function showError(message) {
 
 function hideError() {
   const errorDiv = document.getElementById('errorMessage');
-  errorDiv.classList.remove('show');
-  errorDiv.style.display = 'none';
+  if (errorDiv) {
+    errorDiv.classList.remove('show');
+    errorDiv.style.display = 'none';
+  }
 }
-}
+
+// Expose step navigation & payment functions globally on window for inline onclick handlers
+window.goBackToForm = goBackToForm;
+window.goBackToPaymentMethod = goBackToPaymentMethod;
+window.proceedToPayment = proceedToPayment;
+window.confirmUPIPayment = confirmUPIPayment;
+window.confirmCardPayment = confirmCardPayment;
+window.confirmCashPayment = confirmCashPayment;
+window.startNewDonation = startNewDonation;
+window.downloadReceipt = downloadReceipt;
+window.submitDonorForm = submitDonorForm;
+</script>

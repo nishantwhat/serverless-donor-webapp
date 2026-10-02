@@ -44,7 +44,7 @@ function createDonation(donationData) {
       amount: amount,
       currency: CURRENCY.INR,
       payment_method: donationData.payment_method,
-      payment_status: DONATION_STATUS.DRAFT,
+      payment_status: DONATION_STATUS.PENDING,
       receipt_number: '',
       receipt_pdf_url: '',
       created_at: new Date().toISOString(),
@@ -117,7 +117,7 @@ function updateDonationStatus(donationId, newStatus, additionalData = {}) {
     
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === donationId) {
-        updateRow(SHEET_NAMES.DONATIONS, i - 1, updated);
+        updateRow(SHEET_NAMES.DONATIONS, i + 1, updated);
         
         // Log action
         logAudit(AUDIT_ACTION.UPDATED, AUDIT_ENTITY_TYPE.DONATION, donationId, currentDonation, updated);
@@ -152,14 +152,22 @@ function markPaymentPending(donationId) {
 
 /**
  * Mark donation as awaiting confirmation
- * Called when donor says they completed payment (for UPI)
+ * Called when donor indicates payment completion
  * 
  * @param {string} donationId - Donation ID
  * @returns {boolean} True if successful
  */
 function markAwaitingConfirmation(donationId) {
   try {
-    return updateDonationStatus(donationId, DONATION_STATUS.AWAITING_CONFIRMATION);
+    const updated = updateDonationStatus(donationId, DONATION_STATUS.AWAITING_CONFIRMATION);
+    
+    // Also sync status on matching payment record if present
+    const payment = getPaymentByDonationId(donationId);
+    if (payment && payment.payment_id) {
+      updatePaymentStatus(payment.payment_id, PAYMENT_STATUS.PENDING);
+    }
+    
+    return updated;
   } catch (error) {
     Logger.log(`Error marking awaiting confirmation: ${error}`);
     throw error;
